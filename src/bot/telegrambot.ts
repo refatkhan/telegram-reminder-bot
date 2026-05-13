@@ -48,13 +48,11 @@ bot.on("message", async (msg) => {
 
         await db.collection("reminders").insertOne({
             chatId: msg.chat.id,
-
             title: parsed.title,
-
             originalText: text,
-
             reminderDate: new Date(parsed.date),
             completed: false,
+            eventStarted: false,
             lastReminderSent: new Date(),
             reminderCount: 0,
             createdAt: new Date(),

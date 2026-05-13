@@ -39,9 +39,35 @@ cron.schedule("* * * * *", async () => {
                 diffMs / (1000 * 60);
 
             if (diffHours <= 0) {
+                // EVENT START ALERT
+
+                if (!reminder.eventStarted) {
+                    await bot.sendMessage(
+                        reminder.chatId,
+                        `🚨 EVENT STARTED
+
+📌 ${reminder.title}
+
+Your scheduled event time has arrived.`
+                    );
+
+                    await db.collection("reminders").updateOne(
+                        {
+                            _id: reminder._id,
+                        },
+                        {
+                            $set: {
+                                eventStarted: true,
+                            },
+                        }
+                    );
+                    console.log(
+                        "Event Started Alert Sent:",
+                        reminder.title
+                    );
+                }
                 continue;
             }
-
             let cooldownMinutes = 0;
 
             // 48h → 24h
