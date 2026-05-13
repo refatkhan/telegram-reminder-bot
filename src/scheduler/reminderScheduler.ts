@@ -32,7 +32,8 @@ cron.schedule("* * * * *", async () => {
             );
 
             const diffMs =
-                reminderDate.getTime() - now.getTime();
+                reminderDate.getTime() -
+                now.getTime();
 
             const diffHours =
                 diffMs / (1000 * 60 * 60);
@@ -40,13 +41,22 @@ cron.schedule("* * * * *", async () => {
             const diffMinutes =
                 diffMs / (1000 * 60);
 
-            // EVENT START ALERT
+            // ===================================
+            // OVERDUE / EVENT STARTED
+            // ===================================
 
             if (diffHours <= 0) {
-                if (!reminder.eventStarted) {
-                    await bot.sendMessage(
-                        reminder.chatId,
-                        `🚨 EVENT STARTED
+                // ==========================
+                // RECURRING REMINDERS
+                // ==========================
+
+                if (reminder.isRecurring) {
+                    if (
+                        !reminder.eventStarted
+                    ) {
+                        await bot.sendMessage(
+                            reminder.chatId,
+                            `🚨 EVENT STARTED
 
 📌 ${reminder.title}
 
@@ -55,14 +65,12 @@ cron.schedule("* * * * *", async () => {
 ⏰ Your scheduled event time has arrived.
 
 Good luck 🚀`
-                    );
-
-                    // RECURRING REMINDER RESET
-
-                    if (reminder.isRecurring) {
-                        let nextDate = new Date(
-                            reminder.reminderDate
                         );
+
+                        let nextDate =
+                            new Date(
+                                reminder.reminderDate
+                            );
 
                         // DAILY
 
@@ -71,7 +79,8 @@ Good luck 🚀`
                             "daily"
                         ) {
                             nextDate.setDate(
-                                nextDate.getDate() + 1
+                                nextDate.getDate() +
+                                1
                             );
                         }
 
@@ -82,25 +91,37 @@ Good luck 🚀`
                             "weekly"
                         ) {
                             nextDate.setDate(
-                                nextDate.getDate() + 7
+                                nextDate.getDate() +
+                                7
                             );
                         }
 
                         await db
-                            .collection("reminders")
+                            .collection(
+                                "reminders"
+                            )
                             .updateOne(
                                 {
                                     _id: reminder._id,
                                 },
                                 {
                                     $set: {
-                                        reminderDate: nextDate,
+                                        reminderDate:
+                                            nextDate,
 
-                                        eventStarted: false,
+                                        eventStarted:
+                                            false,
 
-                                        completed: false,
+                                        completed:
+                                            false,
 
-                                        lastReminderSent: null,
+                                        isOverdue:
+                                            false,
+
+                                        lastReminderSent:
+                                            null,
+
+                                        reminderCount: 0,
                                     },
                                 }
                             );
@@ -111,31 +132,141 @@ Good luck 🚀`
                         );
                     }
 
-                    // NORMAL ONE-TIME REMINDER
+                    continue;
+                }
 
-                    else {
-                        await db
-                            .collection("reminders")
-                            .updateOne(
-                                {
-                                    _id: reminder._id,
+                // ==========================
+                // NORMAL TASKS → OVERDUE
+                // ==========================
+
+                if (!reminder.isOverdue) {
+                    await db
+                        .collection("reminders")
+                        .updateOne(
+                            {
+                                _id: reminder._id,
+                            },
+                            {
+                                $set: {
+                                    isOverdue: true,
                                 },
-                                {
-                                    $set: {
-                                        eventStarted: true,
-                                    },
-                                }
-                            );
-                    }
+                            }
+                        );
+
+                    await bot.sendMessage(
+                        reminder.chatId,
+                        `⚠️ Task Overdue
+
+📌 ${reminder.title}
+
+🗓️ ${reminderDate.toLocaleString()}
+
+🚨 You still haven't completed this task.`,
+                        {
+                            reply_markup: {
+                                inline_keyboard:
+                                    [
+                                        [
+                                            {
+                                                text: "✅ Completed",
+                                                callback_data: `complete_${reminder._id}`,
+                                            },
+                                        ],
+
+                                        [
+                                            {
+                                                text: "🗑️ Delete Reminder",
+                                                callback_data: `delete_${reminder._id}`,
+                                            },
+                                        ],
+                                    ],
+                            },
+                        }
+                    );
 
                     console.log(
-                        "Event Started Alert Sent:",
+                        "Task Marked Overdue:",
+                        reminder.title
+                    );
+                }
+
+                // SEND OVERDUE REMINDER EVERY 6 HOURS
+
+                const lastSent =
+                    reminder.lastReminderSent
+                        ? new Date(
+                            reminder.lastReminderSent
+                        )
+                        : null;
+
+                const hoursSinceLast =
+                    lastSent
+                        ? (now.getTime() -
+                            lastSent.getTime()) /
+                        (1000 *
+                            60 *
+                            60)
+                        : 999;
+
+                if (hoursSinceLast >= 6) {
+                    await bot.sendMessage(
+                        reminder.chatId,
+                        `⚠️ Overdue Reminder
+
+📌 ${reminder.title}
+
+🚨 This task is still pending.
+
+🗓️ Original Time:
+${reminderDate.toLocaleString()}`,
+                        {
+                            reply_markup: {
+                                inline_keyboard:
+                                    [
+                                        [
+                                            {
+                                                text: "✅ Completed",
+                                                callback_data: `complete_${reminder._id}`,
+                                            },
+                                        ],
+
+                                        [
+                                            {
+                                                text: "🗑️ Delete Reminder",
+                                                callback_data: `delete_${reminder._id}`,
+                                            },
+                                        ],
+                                    ],
+                            },
+                        }
+                    );
+
+                    await db
+                        .collection("reminders")
+                        .updateOne(
+                            {
+                                _id: reminder._id,
+                            },
+                            {
+                                $set: {
+                                    lastReminderSent:
+                                        now,
+                                },
+                            }
+                        );
+
+                    console.log(
+                        "Overdue Reminder Sent:",
                         reminder.title
                     );
                 }
 
                 continue;
             }
+
+            // ===================================
+            // NORMAL REMINDER LOGIC
+            // ===================================
 
             let cooldownMinutes = 0;
 
@@ -167,12 +298,15 @@ Good luck 🚀`
             }
 
             if (cooldownMinutes > 0) {
-                if (!reminder.lastReminderSent) {
+                if (
+                    !reminder.lastReminderSent
+                ) {
                     shouldSend = true;
                 } else {
-                    const lastSent = new Date(
-                        reminder.lastReminderSent
-                    );
+                    const lastSent =
+                        new Date(
+                            reminder.lastReminderSent
+                        );
 
                     const minutesSinceLast =
                         (now.getTime() -
@@ -188,9 +322,11 @@ Good luck 🚀`
                 }
             }
 
-            if (shouldSend) {
-                // DEFAULT REMINDER MESSAGE
+            // ===================================
+            // SEND REMINDER
+            // ===================================
 
+            if (shouldSend) {
                 let reminderText = `⚠️ Reminder
 
 📌 ${reminder.title}
@@ -207,9 +343,12 @@ Good luck 🚀`
 🗓️ Event Time:
 ${reminderDate.toLocaleString()}`;
 
-                // ESCALATION MESSAGE
+                // ESCALATION
 
-                if (reminder.reminderCount >= 4) {
+                if (
+                    reminder.reminderCount >=
+                    4
+                ) {
                     reminderText = `⚠️ You still haven't completed this task.
 
 📌 ${reminder.title}
@@ -251,16 +390,14 @@ ${reminderDate.toLocaleString()}
 
                                 [
                                     {
-                                        text:
-                                            "🔔 Keep Reminder Active",
+                                        text: "🔔 Keep Reminder Active",
                                         callback_data: `pending_${reminder._id}`,
                                     },
                                 ],
 
                                 [
                                     {
-                                        text:
-                                            "🗑️ Delete Reminder",
+                                        text: "🗑️ Delete Reminder",
                                         callback_data: `delete_${reminder._id}`,
                                     },
                                 ],
@@ -277,7 +414,8 @@ ${reminderDate.toLocaleString()}
                         },
                         {
                             $set: {
-                                lastReminderSent: now,
+                                lastReminderSent:
+                                    now,
                             },
 
                             $inc: {
@@ -293,6 +431,9 @@ ${reminderDate.toLocaleString()}
             }
         }
     } catch (error) {
-        console.log("Scheduler Error:", error);
+        console.log(
+            "Scheduler Error:",
+            error
+        );
     }
 });

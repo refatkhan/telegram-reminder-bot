@@ -12,7 +12,7 @@ console.log(
 cron.schedule("0 8 * * *", async () => {
     try {
         console.log(
-            "Sending Daily Summaries..."
+            "Sending Daily Schedules..."
         );
 
         const client = await clientPromise;
@@ -26,47 +26,101 @@ cron.schedule("0 8 * * *", async () => {
             })
             .toArray();
 
-        // GROUP TASKS BY USER
+        const today = new Date();
 
-        const groupedReminders =
-            reminders.reduce((acc, reminder) => {
-                const chatId = reminder.chatId;
+        // TODAY DATE VALUES
 
-                if (!acc[chatId]) {
-                    acc[chatId] = [];
+        const todayDate =
+            today.getDate();
+
+        const todayMonth =
+            today.getMonth();
+
+        const todayYear =
+            today.getFullYear();
+
+        // GROUP USER REMINDERS
+
+        const groupedReminders:
+            Record<string, any[]> = {};
+
+        for (const reminder of reminders) {
+            const reminderDate = new Date(
+                reminder.reminderDate
+            );
+
+            // ONLY TODAY'S TASKS
+
+            if (
+                reminderDate.getDate() ===
+                todayDate &&
+                reminderDate.getMonth() ===
+                todayMonth &&
+                reminderDate.getFullYear() ===
+                todayYear
+            ) {
+                if (
+                    !groupedReminders[
+                    reminder.chatId
+                    ]
+                ) {
+                    groupedReminders[
+                        reminder.chatId
+                    ] = [];
                 }
 
-                acc[chatId].push(reminder);
+                groupedReminders[
+                    reminder.chatId
+                ].push(reminder);
+            }
+        }
 
-                return acc;
-            }, {} as Record<string, any[]>);
-
-        // SEND SUMMARY TO EACH USER
+        // SEND TO EACH USER
 
         for (const chatId in groupedReminders) {
             const userReminders =
                 groupedReminders[chatId];
 
-            if (userReminders.length === 0) {
+            if (
+                userReminders.length === 0
+            ) {
                 continue;
             }
 
+            // SORT BY TIME
+
+            userReminders.sort(
+                (a, b) =>
+                    new Date(
+                        a.reminderDate
+                    ).getTime() -
+                    new Date(
+                        b.reminderDate
+                    ).getTime()
+            );
+
             let message =
-                "📅 Today's Tasks\n\n";
+                "🌅 Good Morning\n\n";
+
+            message +=
+                "📅 Today's Schedule\n\n";
 
             userReminders.forEach(
-                (reminder, index) => {
-                    const reminderDate = new Date(
-                        reminder.reminderDate
-                    );
+                (reminder) => {
+                    const reminderDate =
+                        new Date(
+                            reminder.reminderDate
+                        );
 
-                    message += `${index + 1}. ${reminder.title
-                        } — ${reminderDate.toLocaleString()}\n`;
+                    message += `📌 ${reminder.title
+                        }\n`;
+
+                    message += `⏰ ${reminderDate.toLocaleTimeString()}\n\n`;
                 }
             );
 
             message +=
-                "\n🚀 Stay productive today!";
+                "🚀 Stay productive today!";
 
             await bot.sendMessage(
                 Number(chatId),
@@ -74,7 +128,7 @@ cron.schedule("0 8 * * *", async () => {
             );
 
             console.log(
-                `Daily Summary Sent To ${chatId}`
+                `Daily Schedule Sent To ${chatId}`
             );
         }
     } catch (error) {

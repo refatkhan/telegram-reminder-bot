@@ -91,33 +91,33 @@ bot.setMyCommands([
 ]);
 // MESSAGE HANDLER
 function getCategoryEmoji(
-  category: string
+    category: string
 ) {
-  switch (category) {
-    case "study":
-      return "📚";
+    switch (category) {
+        case "study":
+            return "📚";
 
-    case "work":
-      return "💼";
+        case "work":
+            return "💼";
 
-    case "health":
-      return "🏃";
+        case "health":
+            return "🏃";
 
-    case "finance":
-      return "💰";
+        case "finance":
+            return "💰";
 
-    case "meeting":
-      return "🤝";
+        case "meeting":
+            return "🤝";
 
-    case "travel":
-      return "✈️";
+        case "travel":
+            return "✈️";
 
-    case "shopping":
-      return "🛒";
+        case "shopping":
+            return "🛒";
 
-    default:
-      return "🏠";
-  }
+        default:
+            return "🏠";
+    }
 }
 bot.on("message", async (msg) => {
     try {
@@ -803,12 +803,10 @@ edit class test next monday 10am`
 
             completed: false,
 
+            isOverdue: false,
             eventStarted: false,
-
             lastReminderSent: new Date(),
-
             reminderCount: 0,
-
             isRecurring:
                 parsed.isRecurring || false,
 
