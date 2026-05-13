@@ -90,6 +90,31 @@ Examples:
   "isRecurring": true,
   "recurringType": "weekly"
 }
+Also detect reminder category.
+
+Possible categories:
+- study
+- work
+- health
+- finance
+- personal
+- meeting
+- travel
+- shopping
+
+Examples:
+
+"dbms exam tomorrow"
+=
+"category": "study"
+
+"doctor appointment"
+=
+"category": "health"
+
+"team meeting tomorrow"
+=
+"category": "meeting"
 `;
 
     try {
@@ -180,6 +205,9 @@ Examples:
             title: parsed.title,
 
             date: parsed.date,
+
+            category:
+                parsed.category || "personal",
 
             isRecurring:
                 parsed.isRecurring || false,

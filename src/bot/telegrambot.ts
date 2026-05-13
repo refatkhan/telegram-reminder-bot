@@ -90,7 +90,35 @@ bot.setMyCommands([
     },
 ]);
 // MESSAGE HANDLER
+function getCategoryEmoji(
+  category: string
+) {
+  switch (category) {
+    case "study":
+      return "📚";
 
+    case "work":
+      return "💼";
+
+    case "health":
+      return "🏃";
+
+    case "finance":
+      return "💰";
+
+    case "meeting":
+      return "🤝";
+
+    case "travel":
+      return "✈️";
+
+    case "shopping":
+      return "🛒";
+
+    default:
+      return "🏠";
+  }
+}
 bot.on("message", async (msg) => {
     try {
         const text = msg.text;
@@ -445,7 +473,7 @@ Keep going 🚀`
                 msg.chat.id,
                 `🎯 Focus Task
 
-📌 ${reminder.title}
+📌${getCategoryEmoji(reminder.category)} ${reminder.title}
 
 ⏰ ${new Date(
                     reminder.reminderDate
@@ -766,6 +794,9 @@ edit class test next monday 10am`
 
             title: parsed.title,
 
+            category:
+                parsed.category || "personal",
+
             originalText: text,
 
             reminderDate: new Date(parsed.date),
@@ -976,6 +1007,77 @@ ${newDate.toLocaleString()}`
                 query.message!.chat.id,
                 "📌 Okay! Reminder will continue."
             );
+        }
+        // ===============================
+        // DELETE REMINDER
+        // ===============================
+
+        if (action === "delete") {
+            const reminder = await db
+                .collection("reminders")
+                .findOne({
+                    _id: new ObjectId(reminderId),
+                });
+
+            // REMINDER NOT FOUND
+
+            if (!reminder) {
+                await bot.answerCallbackQuery(
+                    query.id,
+                    {
+                        text: "❌ Reminder not found",
+                    }
+                );
+
+                return;
+            }
+
+            // DELETE FROM DATABASE
+
+            await db.collection("reminders").deleteOne(
+                {
+                    _id: new ObjectId(reminderId),
+                }
+            );
+
+            // REMOVE BUTTONS FROM OLD MESSAGE
+
+            await bot.editMessageReplyMarkup(
+                {
+                    inline_keyboard: [],
+                },
+                {
+                    chat_id: query.message!.chat.id,
+
+                    message_id:
+                        query.message!.message_id,
+                }
+            );
+
+            // SUCCESS POPUP
+
+            await bot.answerCallbackQuery(
+                query.id,
+                {
+                    text: "🗑️ Reminder Deleted",
+                }
+            );
+
+            // SUCCESS MESSAGE
+
+            await bot.sendMessage(
+                query.message!.chat.id,
+                `🗑️ Reminder Deleted
+
+📌 ${reminder.title}`
+            );
+
+            console.log(
+                "Reminder Deleted:",
+                reminder.title
+            );
+
+            return;
         }
     } catch (error) {
         console.log("Callback Error:", error);
