@@ -5,6 +5,8 @@ import clientPromise from "@/lib/mongodb";
 
 console.log("Reminder Scheduler Started");
 
+// CHECK EVERY MINUTE
+
 cron.schedule("* * * * *", async () => {
     try {
         console.log("Checking reminders...");
@@ -38,9 +40,9 @@ cron.schedule("* * * * *", async () => {
             const diffMinutes =
                 diffMs / (1000 * 60);
 
-            if (diffHours <= 0) {
-                // EVENT START ALERT
+            // EVENT START ALERT
 
+            if (diffHours <= 0) {
                 if (!reminder.eventStarted) {
                     await bot.sendMessage(
                         reminder.chatId,
@@ -48,34 +50,106 @@ cron.schedule("* * * * *", async () => {
 
 📌 ${reminder.title}
 
-Your scheduled event time has arrived.`
+🗓️ ${reminderDate.toLocaleString()}
+
+⏰ Your scheduled event time has arrived.
+
+Good luck 🚀`
                     );
 
-                    await db.collection("reminders").updateOne(
-                        {
-                            _id: reminder._id,
-                        },
-                        {
-                            $set: {
-                                eventStarted: true,
-                            },
+                    // RECURRING REMINDER RESET
+
+                    if (reminder.isRecurring) {
+                        let nextDate = new Date(
+                            reminder.reminderDate
+                        );
+
+                        // DAILY
+
+                        if (
+                            reminder.recurringType ===
+                            "daily"
+                        ) {
+                            nextDate.setDate(
+                                nextDate.getDate() + 1
+                            );
                         }
-                    );
+
+                        // WEEKLY
+
+                        else if (
+                            reminder.recurringType ===
+                            "weekly"
+                        ) {
+                            nextDate.setDate(
+                                nextDate.getDate() + 7
+                            );
+                        }
+
+                        await db
+                            .collection("reminders")
+                            .updateOne(
+                                {
+                                    _id: reminder._id,
+                                },
+                                {
+                                    $set: {
+                                        reminderDate: nextDate,
+
+                                        eventStarted: false,
+
+                                        completed: false,
+
+                                        lastReminderSent: null,
+                                    },
+                                }
+                            );
+
+                        console.log(
+                            "Recurring Reminder Reset:",
+                            reminder.title
+                        );
+                    }
+
+                    // NORMAL ONE-TIME REMINDER
+
+                    else {
+                        await db
+                            .collection("reminders")
+                            .updateOne(
+                                {
+                                    _id: reminder._id,
+                                },
+                                {
+                                    $set: {
+                                        eventStarted: true,
+                                    },
+                                }
+                            );
+                    }
+
                     console.log(
                         "Event Started Alert Sent:",
                         reminder.title
                     );
                 }
+
                 continue;
             }
+
             let cooldownMinutes = 0;
 
             // 48h → 24h
-            if (diffHours <= 48 && diffHours > 24) {
+
+            if (
+                diffHours <= 48 &&
+                diffHours > 24
+            ) {
                 cooldownMinutes = 360;
             }
 
             // 24h → 1h
+
             else if (
                 diffHours <= 24 &&
                 diffHours > 1
@@ -84,6 +158,7 @@ Your scheduled event time has arrived.`
             }
 
             // 1h → 0h
+
             else if (
                 diffMinutes <= 60 &&
                 diffMinutes > 0
@@ -114,7 +189,7 @@ Your scheduled event time has arrived.`
             }
 
             if (shouldSend) {
-                // ESCALATION MESSAGE
+                // DEFAULT REMINDER MESSAGE
 
                 let reminderText = `⚠️ Reminder
 
@@ -132,7 +207,7 @@ Your scheduled event time has arrived.`
 🗓️ Event Time:
 ${reminderDate.toLocaleString()}`;
 
-                // IF USER IGNORES TOO MUCH
+                // ESCALATION MESSAGE
 
                 if (reminder.reminderCount >= 4) {
                     reminderText = `⚠️ You still haven't completed this task.
@@ -148,7 +223,10 @@ ${reminderDate.toLocaleString()}`;
                             )} minutes remaining`
                         }
 
-Please complete it before the deadline.`;
+🗓️ Event Time:
+${reminderDate.toLocaleString()}
+
+🚨 Please complete it before the deadline.`;
                 }
 
                 await bot.sendMessage(
@@ -173,8 +251,17 @@ Please complete it before the deadline.`;
 
                                 [
                                     {
-                                        text: "❌ Pending",
+                                        text:
+                                            "🔔 Keep Reminder Active",
                                         callback_data: `pending_${reminder._id}`,
+                                    },
+                                ],
+
+                                [
+                                    {
+                                        text:
+                                            "🗑️ Delete Reminder",
+                                        callback_data: `delete_${reminder._id}`,
                                     },
                                 ],
                             ],

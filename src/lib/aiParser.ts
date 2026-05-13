@@ -67,6 +67,29 @@ IF NOT a reminder:
 {
   "isReminder": false
 }
+  Detect recurring reminders.
+
+Examples:
+
+"gym everyday 7am"
+=
+{
+  "isReminder": true,
+  "title": "Gym",
+  "date": "2026-05-14T07:00:00+06:00",
+  "isRecurring": true,
+  "recurringType": "daily"
+}
+
+"class every sunday 10am"
+=
+{
+  "isReminder": true,
+  "title": "Class",
+  "date": "2026-05-17T10:00:00+06:00",
+  "isRecurring": true,
+  "recurringType": "weekly"
+}
 `;
 
     try {
@@ -155,7 +178,14 @@ IF NOT a reminder:
 
         return {
             title: parsed.title,
+
             date: parsed.date,
+
+            isRecurring:
+                parsed.isRecurring || false,
+
+            recurringType:
+                parsed.recurringType || null,
         };
     } catch (error) {
         console.log(

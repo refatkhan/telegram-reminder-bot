@@ -18,32 +18,75 @@ console.log("Telegram Bot Service Started");
 bot.setMyCommands([
     {
         command: "today",
-        description: "Show today's tasks",
+        description: "📅 Show today's tasks",
     },
 
     {
         command: "all",
-        description: "Show all reminders",
+        description: "📋 Show all reminders",
     },
 
     {
         command: "completed",
-        description: "Show completed tasks",
+        description: "✅ Show completed tasks",
+    },
+
+    {
+        command: "pending",
+        description: "⏳ Show pending tasks",
+    },
+
+    {
+        command: "important",
+        description: "🚨 Show important tasks",
+    },
+    {
+        command: "edit",
+        description: "✏️ Edit reminder",
+    },
+    {
+        command: "summary",
+        description: "📝 Show task summary",
+    },
+
+    {
+        command: "calendar",
+        description: "🗓️ Show upcoming schedule",
     },
 
     {
         command: "stats",
-        description: "Show productivity stats",
+        description: "📊 Show productivity stats",
+    },
+
+    {
+        command: "streak",
+        description: "🔥 Show productivity streak",
+    },
+
+    {
+        command: "focus",
+        description: "🎯 Show next important task",
+    },
+
+    {
+        command: "motivation",
+        description: "🚀 Get motivational message",
     },
 
     {
         command: "delete",
-        description: "Delete a reminder",
+        description: "🗑️ Delete a reminder",
+    },
+
+    {
+        command: "settings",
+        description: "⚙️ Bot settings",
     },
 
     {
         command: "help",
-        description: "Show all commands",
+        description: "🤖 Show all commands",
     },
 ]);
 // MESSAGE HANDLER
@@ -185,6 +228,270 @@ bot.on("message", async (msg) => {
 
             return;
         }
+        if (text === "/pending") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const reminders = await db
+                .collection("reminders")
+                .find({
+                    chatId: msg.chat.id,
+                    completed: false,
+                })
+                .toArray();
+
+            if (reminders.length === 0) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "🎉 No pending tasks."
+                );
+
+                return;
+            }
+
+            let message = "⏳ Pending Tasks\n\n";
+
+            reminders.forEach((reminder, index) => {
+                message += `${index + 1}. ${reminder.title
+                    }\n`;
+            });
+
+            await bot.sendMessage(
+                msg.chat.id,
+                message
+            );
+
+            return;
+        }
+        if (text === "/important") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const reminders = await db
+                .collection("reminders")
+                .find({
+                    chatId: msg.chat.id,
+                    completed: false,
+                })
+                .sort({
+                    reminderDate: 1,
+                })
+                .limit(3)
+                .toArray();
+
+            if (reminders.length === 0) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "📭 No important tasks."
+                );
+
+                return;
+            }
+
+            let message =
+                "🚨 Important Upcoming Tasks\n\n";
+
+            reminders.forEach((reminder, index) => {
+                const reminderDate = new Date(
+                    reminder.reminderDate
+                );
+
+                message += `${index + 1}. ${reminder.title
+                    }\n`;
+
+                message += `⏰ ${reminderDate.toLocaleString()}\n\n`;
+            });
+
+            await bot.sendMessage(
+                msg.chat.id,
+                message
+            );
+
+            return;
+        }
+        if (text === "/summary") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const total = await db
+                .collection("reminders")
+                .countDocuments({
+                    chatId: msg.chat.id,
+                });
+
+            const completed = await db
+                .collection("reminders")
+                .countDocuments({
+                    chatId: msg.chat.id,
+                    completed: true,
+                });
+
+            const pending =
+                total - completed;
+
+            await bot.sendMessage(
+                msg.chat.id,
+                `📝 Task Summary
+
+📌 Total Tasks: ${total}
+
+✅ Completed: ${completed}
+
+⏳ Pending: ${pending}`
+            );
+
+            return;
+        }
+        if (text === "/calendar") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const reminders = await db
+                .collection("reminders")
+                .find({
+                    chatId: msg.chat.id,
+                    completed: false,
+                })
+                .sort({
+                    reminderDate: 1,
+                })
+                .limit(10)
+                .toArray();
+
+            if (reminders.length === 0) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "📭 No scheduled tasks."
+                );
+
+                return;
+            }
+
+            let message =
+                "🗓️ Upcoming Schedule\n\n";
+
+            reminders.forEach((reminder, index) => {
+                const reminderDate = new Date(
+                    reminder.reminderDate
+                );
+
+                message += `${index + 1}. ${reminder.title
+                    }\n`;
+
+                message += `⏰ ${reminderDate.toLocaleString()}\n\n`;
+            });
+
+            await bot.sendMessage(
+                msg.chat.id,
+                message
+            );
+
+            return;
+        }
+        if (text === "/streak") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const completed = await db
+                .collection("reminders")
+                .countDocuments({
+                    chatId: msg.chat.id,
+                    completed: true,
+                });
+
+            await bot.sendMessage(
+                msg.chat.id,
+                `🔥 Productivity Streak
+
+You've completed ${completed} tasks so far!
+
+Keep going 🚀`
+            );
+
+            return;
+        }
+        if (text === "/focus") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const reminder = await db
+                .collection("reminders")
+                .find({
+                    chatId: msg.chat.id,
+                    completed: false,
+                })
+                .sort({
+                    reminderDate: 1,
+                })
+                .limit(1)
+                .next();
+
+            if (!reminder) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "🎉 No pending tasks."
+                );
+
+                return;
+            }
+
+            await bot.sendMessage(
+                msg.chat.id,
+                `🎯 Focus Task
+
+📌 ${reminder.title}
+
+⏰ ${new Date(
+                    reminder.reminderDate
+                ).toLocaleString()}`
+            );
+
+            return;
+        }
+        if (text === "/motivation") {
+            const messages = [
+                "🚀 Small progress is still progress.",
+                "🔥 Stay focused and keep pushing.",
+                "🎯 Discipline beats motivation.",
+                "💡 Your future self will thank you.",
+                "📚 Consistency creates success.",
+            ];
+
+            const random =
+                messages[
+                Math.floor(
+                    Math.random() * messages.length
+                )
+                ];
+
+            await bot.sendMessage(
+                msg.chat.id,
+                random
+            );
+
+            return;
+        }
+        if (text === "/settings") {
+            await bot.sendMessage(
+                msg.chat.id,
+                `⚙️ Settings
+
+Coming soon:
+
+🌍 Timezone Settings
+🔔 Reminder Frequency
+🎨 Theme Customization
+🧠 AI Preferences`
+            );
+
+            return;
+        }
         if (text === "/stats") {
             const client = await clientPromise;
 
@@ -283,6 +590,132 @@ delete exam`
 
             return;
         }
+        // ===============================
+        // EDIT COMMAND
+        // ===============================
+
+        if (text === "/edit") {
+            await bot.sendMessage(
+                msg.chat.id,
+                `✏️ Edit Reminder
+
+Examples:
+
+edit exam tomorrow 5pm
+
+edit meeting friday 8pm
+
+edit class test next monday 10am`
+            );
+
+            return;
+        }
+
+        // ===============================
+        // EDIT REMINDER LOGIC
+        // ===============================
+
+        if (
+            text.toLowerCase().startsWith("edit ")
+        ) {
+            const editText = text
+                .replace(/edit /i, "")
+                .trim();
+
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const reminders = await db
+                .collection("reminders")
+                .find({
+                    chatId: msg.chat.id,
+
+                    completed: false,
+                })
+                .toArray();
+
+            // FIND MATCHING REMINDER
+
+            let matchedReminder = null;
+
+            for (const reminder of reminders) {
+                if (
+                    editText
+                        .toLowerCase()
+                        .includes(
+                            reminder.title.toLowerCase()
+                        )
+                ) {
+                    matchedReminder = reminder;
+
+                    break;
+                }
+            }
+
+            // NO MATCH FOUND
+
+            if (!matchedReminder) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "❌ Could not find matching reminder."
+                );
+
+                return;
+            }
+
+            // PARSE NEW DATE
+
+            const parsed =
+                await parseReminderWithAI(editText);
+
+            // INVALID DATE
+
+            if (!parsed?.date) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "❌ Could not understand new reminder time."
+                );
+
+                return;
+            }
+
+            // UPDATE REMINDER
+
+            await db.collection("reminders").updateOne(
+                {
+                    _id: matchedReminder._id,
+                },
+                {
+                    $set: {
+                        reminderDate: new Date(
+                            parsed.date
+                        ),
+
+                        lastReminderSent: null,
+
+                        eventStarted: false,
+                    },
+                }
+            );
+
+            await bot.sendMessage(
+                msg.chat.id,
+                `✏️ Reminder Updated
+
+📌 ${matchedReminder.title}
+
+⏰ ${parsed.date}`
+            );
+
+            console.log(
+                "Reminder Updated:",
+                matchedReminder.title
+            );
+
+            return;
+        }
+
         if (text === "/help") {
             await bot.sendMessage(
                 msg.chat.id,
@@ -330,13 +763,27 @@ delete exam`
 
         await db.collection("reminders").insertOne({
             chatId: msg.chat.id,
+
             title: parsed.title,
+
             originalText: text,
+
             reminderDate: new Date(parsed.date),
+
             completed: false,
+
             eventStarted: false,
+
             lastReminderSent: new Date(),
+
             reminderCount: 0,
+
+            isRecurring:
+                parsed.isRecurring || false,
+
+            recurringType:
+                parsed.recurringType || null,
+
             createdAt: new Date(),
         });
 
