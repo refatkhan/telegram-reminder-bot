@@ -6,6 +6,8 @@ dotenv.config({
 
 import "@/scheduler/reminderScheduler";
 import "@/scheduler/cleanupScheduler";
+import "@/scheduler/dailySummaryScheduler";
+
 import bot from "@/lib/bot";
 import clientPromise from "@/lib/mongodb";
 import { parseReminderWithAI } from "@/lib/aiParser";
@@ -13,7 +15,37 @@ import { parseReminderWithAI } from "@/lib/aiParser";
 import { ObjectId } from "mongodb";
 
 console.log("Telegram Bot Service Started");
+bot.setMyCommands([
+    {
+        command: "today",
+        description: "Show today's tasks",
+    },
 
+    {
+        command: "all",
+        description: "Show all reminders",
+    },
+
+    {
+        command: "completed",
+        description: "Show completed tasks",
+    },
+
+    {
+        command: "stats",
+        description: "Show productivity stats",
+    },
+
+    {
+        command: "delete",
+        description: "Delete a reminder",
+    },
+
+    {
+        command: "help",
+        description: "Show all commands",
+    },
+]);
 // MESSAGE HANDLER
 
 bot.on("message", async (msg) => {
@@ -21,6 +53,256 @@ bot.on("message", async (msg) => {
         const text = msg.text;
 
         if (!text) return;
+        if (text === "/today") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const reminders = await db
+                .collection("reminders")
+                .find({
+                    chatId: msg.chat.id,
+                    completed: false,
+                })
+                .sort({
+                    reminderDate: 1,
+                })
+                .toArray();
+
+            if (reminders.length === 0) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "📭 No active reminders found."
+                );
+
+                return;
+            }
+
+            let message = "📅 Today's Tasks\n\n";
+
+            reminders.forEach((reminder, index) => {
+                const reminderDate = new Date(
+                    reminder.reminderDate
+                );
+
+                message += `${index + 1}. ${reminder.title
+                    }\n⏰ ${reminderDate.toLocaleString()}\n\n`;
+            });
+
+            message += "🚀 Stay productive!";
+
+            await bot.sendMessage(
+                msg.chat.id,
+                message
+            );
+
+            return;
+        }
+
+        if (text === "/all") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const reminders = await db
+                .collection("reminders")
+                .find({
+                    chatId: msg.chat.id,
+                })
+                .sort({
+                    reminderDate: 1,
+                })
+                .toArray();
+
+            if (reminders.length === 0) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "📭 No reminders found."
+                );
+
+                return;
+            }
+
+            let message = "📋 All Reminders\n\n";
+
+            reminders.forEach((reminder, index) => {
+                const reminderDate = new Date(
+                    reminder.reminderDate
+                );
+
+                message += `${index + 1}. ${reminder.title
+                    }\n`;
+
+                message += `⏰ ${reminderDate.toLocaleString()}\n`;
+
+                message += `✅ ${reminder.completed
+                    ? "Completed"
+                    : "Pending"
+                    }\n\n`;
+            });
+
+            await bot.sendMessage(
+                msg.chat.id,
+                message
+            );
+
+            return;
+        }
+        if (text === "/completed") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const reminders = await db
+                .collection("reminders")
+                .find({
+                    chatId: msg.chat.id,
+                    completed: true,
+                })
+                .toArray();
+
+            if (reminders.length === 0) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "📭 No completed reminders."
+                );
+
+                return;
+            }
+
+            let message =
+                "✅ Completed Tasks\n\n";
+
+            reminders.forEach((reminder, index) => {
+                message += `${index + 1}. ${reminder.title
+                    }\n`;
+            });
+
+            await bot.sendMessage(
+                msg.chat.id,
+                message
+            );
+
+            return;
+        }
+        if (text === "/stats") {
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const total = await db
+                .collection("reminders")
+                .countDocuments({
+                    chatId: msg.chat.id,
+                });
+
+            const completed = await db
+                .collection("reminders")
+                .countDocuments({
+                    chatId: msg.chat.id,
+                    completed: true,
+                });
+
+            const pending =
+                total - completed;
+
+            const completionRate =
+                total > 0
+                    ? Math.round(
+                        (completed / total) * 100
+                    )
+                    : 0;
+
+            await bot.sendMessage(
+                msg.chat.id,
+                `📊 Productivity Stats
+
+📌 Total Tasks: ${total}
+
+✅ Completed: ${completed}
+
+⏳ Pending: ${pending}
+
+🚀 Completion Rate: ${completionRate}%`
+            );
+
+            return;
+        }
+        if (text === "/delete") {
+            await bot.sendMessage(
+                msg.chat.id,
+                `🗑️ Delete Command
+
+Send:
+
+delete task_name
+
+Example:
+delete exam`
+            );
+
+            return;
+        }
+        if (
+            text.toLowerCase().startsWith(
+                "delete "
+            )
+        ) {
+            const taskName = text
+                .replace(/delete /i, "")
+                .trim();
+
+            const client = await clientPromise;
+
+            const db = client.db("studyReminder");
+
+            const result = await db
+                .collection("reminders")
+                .deleteOne({
+                    chatId: msg.chat.id,
+
+                    title: {
+                        $regex: taskName,
+                        $options: "i",
+                    },
+                });
+
+            if (result.deletedCount === 0) {
+                await bot.sendMessage(
+                    msg.chat.id,
+                    "❌ Task not found."
+                );
+
+                return;
+            }
+
+            await bot.sendMessage(
+                msg.chat.id,
+                `🗑️ Deleted task: ${taskName}`
+            );
+
+            return;
+        }
+        if (text === "/help") {
+            await bot.sendMessage(
+                msg.chat.id,
+                `🤖 Available Commands
+
+/today → Today's tasks
+
+/all → All reminders
+
+/completed → Completed tasks
+
+/stats → Productivity stats
+
+/delete → Delete reminder
+
+/help → Show commands`
+            );
+
+            return;
+        }
 
         console.log("Message:", text);
 

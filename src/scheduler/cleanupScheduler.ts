@@ -6,7 +6,7 @@ console.log("Cleanup Scheduler Started");
 
 // EVERY DAY AT 3 AM
 
-cron.schedule("* * * * *", async () => {
+cron.schedule("0 3 * * *", async () => {
     try {
         console.log(
             "Running Cleanup Scheduler..."
@@ -18,8 +18,8 @@ cron.schedule("* * * * *", async () => {
 
         const sevenDaysAgo = new Date();
 
-        sevenDaysAgo.setMinutes(
-            sevenDaysAgo.getMinutes() - 1
+        sevenDaysAgo.setDate(
+            sevenDaysAgo.getDate() - 7
         );
 
         // DELETE OLD COMPLETED TASKS
