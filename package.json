@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "bot": "tsx src/bot/telegramBot.ts",
-    "dev:bot": "nodemon --watch src --ext ts --exec tsx src/bot/telegramBot.ts"
+    "bot": "tsx src/telegram/telegramBot.ts",
+    "dev:bot": "nodemon --watch src --ext ts --exec tsx src/telegram/telegramBot.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

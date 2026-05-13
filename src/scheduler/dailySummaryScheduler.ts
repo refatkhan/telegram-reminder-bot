@@ -1,7 +1,7 @@
 import cron from "node-cron";
 
 import clientPromise from "@/lib/mongodb";
-import bot from "@/lib/bot";
+import bot from "@/telegram/bot";
 
 console.log(
     "Daily Summary Scheduler Started"

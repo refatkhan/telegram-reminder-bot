@@ -1,6 +1,6 @@
-import bot from "./bot";
+import bot from "../telegram/bot";
 import clientPromise from "./mongodb";
-import { parseReminderWithAI } from "./aiParser";
+import { parseReminderWithAI } from "../services/aiParser.service";
 
 let isBotRunning = false;
 

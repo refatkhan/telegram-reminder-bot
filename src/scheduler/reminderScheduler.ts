@@ -1,6 +1,6 @@
 import cron from "node-cron";
 
-import bot from "@/lib/bot";
+import bot from "@/telegram/bot";
 import clientPromise from "@/lib/mongodb";
 
 console.log("Reminder Scheduler Started");
