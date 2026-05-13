@@ -65,39 +65,45 @@ export async function getTodayReminders(
     const collection =
         await getCollection();
 
-    const reminders =
-        await collection
-            .find({
-                chatId,
+    const now = new Date();
 
-                completed: false,
-            })
-            .sort({
-                reminderDate: 1,
-            })
-            .toArray();
+    const startOfDay =
+        new Date(now);
 
-    const today = new Date();
-
-    return reminders.filter(
-        (reminder) => {
-            const reminderDate =
-                new Date(
-                    reminder.reminderDate
-                );
-
-            return (
-                reminderDate.getDate() ===
-                today.getDate() &&
-                reminderDate.getMonth() ===
-                today.getMonth() &&
-                reminderDate.getFullYear() ===
-                today.getFullYear()
-            );
-        }
+    startOfDay.setHours(
+        0,
+        0,
+        0,
+        0
     );
-}
 
+    const endOfDay =
+        new Date(now);
+
+    endOfDay.setHours(
+        23,
+        59,
+        59,
+        999
+    );
+
+    return collection
+        .find({
+            chatId,
+
+            completed: false,
+
+            reminderDate: {
+                $gte: startOfDay,
+
+                $lte: endOfDay,
+            },
+        })
+        .sort({
+            reminderDate: 1,
+        })
+        .toArray();
+}
 // ===============================
 // GET COMPLETED REMINDERS
 // ===============================
@@ -177,6 +183,26 @@ export async function deleteReminder(
     });
 }
 
+//getImportantReminders
+export async function getImportantReminders(
+    chatId: number
+) {
+    const collection =
+        await getCollection();
+
+    return collection
+        .find({
+            chatId,
+
+            completed: false,
+
+            priority: "high",
+        })
+        .sort({
+            reminderDate: 1,
+        })
+        .toArray();
+}
 // ===============================
 // FIND REMINDER
 // ===============================
