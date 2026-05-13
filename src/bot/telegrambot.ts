@@ -5,7 +5,7 @@ dotenv.config({
 });
 
 import "@/scheduler/reminderScheduler";
-
+import "@/scheduler/cleanupScheduler";
 import bot from "@/lib/bot";
 import clientPromise from "@/lib/mongodb";
 import { parseReminderWithAI } from "@/lib/aiParser";
