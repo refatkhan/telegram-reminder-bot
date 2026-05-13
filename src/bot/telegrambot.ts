@@ -119,6 +119,23 @@ function getCategoryEmoji(
             return "🏠";
     }
 }
+function getPriorityEmoji(
+    priority: string
+) {
+    switch (priority) {
+        case "high":
+            return "🚨";
+
+        case "medium":
+            return "⚠️";
+
+        case "low":
+            return "🟢";
+
+        default:
+            return "⚠️";
+    }
+}
 bot.on("message", async (msg) => {
     try {
         const text = msg.text;
@@ -133,6 +150,7 @@ bot.on("message", async (msg) => {
                 .collection("reminders")
                 .find({
                     chatId: msg.chat.id,
+
                     completed: false,
                 })
                 .sort({
@@ -140,27 +158,71 @@ bot.on("message", async (msg) => {
                 })
                 .toArray();
 
-            if (reminders.length === 0) {
+            // TODAY DATE
+
+            const today = new Date();
+
+            // FILTER ONLY TODAY TASKS
+
+            const todayReminders =
+                reminders.filter((reminder) => {
+                    const reminderDate = new Date(
+                        reminder.reminderDate
+                    );
+
+                    return (
+                        reminderDate.getDate() ===
+                        today.getDate() &&
+                        reminderDate.getMonth() ===
+                        today.getMonth() &&
+                        reminderDate.getFullYear() ===
+                        today.getFullYear()
+                    );
+                });
+
+            // NO TASKS
+
+            if (todayReminders.length === 0) {
                 await bot.sendMessage(
                     msg.chat.id,
-                    "📭 No active reminders found."
+                    "📭 No tasks scheduled for today."
                 );
 
                 return;
             }
 
-            let message = "📅 Today's Tasks\n\n";
+            // MESSAGE
 
-            reminders.forEach((reminder, index) => {
-                const reminderDate = new Date(
-                    reminder.reminderDate
-                );
+            let message =
+                "📅 Today's Tasks\n\n";
 
-                message += `${index + 1}. ${reminder.title
-                    }\n⏰ ${reminderDate.toLocaleString()}\n\n`;
-            });
+            todayReminders.forEach(
+                (reminder, index) => {
+                    const reminderDate = new Date(
+                        reminder.reminderDate
+                    );
 
-            message += "🚀 Stay productive!";
+                    message += `${index + 1}. ${getPriorityEmoji(
+                        reminder.priority || "medium"
+                    )} ${getCategoryEmoji(
+                        reminder.category || "personal"
+                    )} ${reminder.title}
+
+⏰ ${reminderDate.toLocaleString()}
+
+`;
+
+                    // OVERDUE LABEL
+
+                    if (reminder.isOverdue) {
+                        message +=
+                            "⚠️ Overdue Task\n\n";
+                    }
+                }
+            );
+
+            message +=
+                "🚀 Stay productive today!";
 
             await bot.sendMessage(
                 msg.chat.id,
@@ -201,8 +263,11 @@ bot.on("message", async (msg) => {
                     reminder.reminderDate
                 );
 
-                message += `${index + 1}. ${reminder.title
-                    }\n`;
+                message += `${index + 1}. ${getPriorityEmoji(
+                    reminder.priority || "medium"
+                )} ${getCategoryEmoji(
+                    reminder.category || "personal"
+                )} ${reminder.title}\n`;
 
                 message += `⏰ ${reminderDate.toLocaleString()}\n`;
 
@@ -294,7 +359,6 @@ bot.on("message", async (msg) => {
         }
         if (text === "/important") {
             const client = await clientPromise;
-
             const db = client.db("studyReminder");
 
             const reminders = await db
@@ -302,11 +366,11 @@ bot.on("message", async (msg) => {
                 .find({
                     chatId: msg.chat.id,
                     completed: false,
+                    priority: "high",
                 })
                 .sort({
                     reminderDate: 1,
                 })
-                .limit(3)
                 .toArray();
 
             if (reminders.length === 0) {
@@ -326,8 +390,11 @@ bot.on("message", async (msg) => {
                     reminder.reminderDate
                 );
 
-                message += `${index + 1}. ${reminder.title
-                    }\n`;
+                message += `${index + 1}. ${getPriorityEmoji(
+                    reminder.priority || "high"
+                )} ${getCategoryEmoji(
+                    reminder.category || "personal"
+                )} ${reminder.title}\n`;
 
                 message += `⏰ ${reminderDate.toLocaleString()}\n\n`;
             });
@@ -407,8 +474,11 @@ bot.on("message", async (msg) => {
                     reminder.reminderDate
                 );
 
-                message += `${index + 1}. ${reminder.title
-                    }\n`;
+                message += `${index + 1}. ${getPriorityEmoji(
+                    reminder.priority || "medium"
+                )} ${getCategoryEmoji(
+                    reminder.category || "personal"
+                )} ${reminder.title}\n`;
 
                 message += `⏰ ${reminderDate.toLocaleString()}\n\n`;
             });
@@ -473,7 +543,13 @@ Keep going 🚀`
                 msg.chat.id,
                 `🎯 Focus Task
 
-📌${getCategoryEmoji(reminder.category)} ${reminder.title}
+${getPriorityEmoji(
+                    reminder.priority || "medium"
+                )} ${getCategoryEmoji(
+                    reminder.category || "personal"
+                )}
+
+📌 ${reminder.title}
 
 ⏰ ${new Date(
                     reminder.reminderDate
@@ -749,17 +825,33 @@ edit class test next monday 10am`
                 msg.chat.id,
                 `🤖 Available Commands
 
-/today → Today's tasks
+📅 /today → Today's tasks
 
-/all → All reminders
+📋 /all → All reminders
 
-/completed → Completed tasks
+✅ /completed → Completed tasks
 
-/stats → Productivity stats
+⏳ /pending → Pending tasks
 
-/delete → Delete reminder
+🚨 /important → Important tasks
 
-/help → Show commands`
+🗓️ /calendar → Upcoming schedule
+
+📝 /summary → Task summary
+
+📊 /stats → Productivity stats
+
+🔥 /streak → Productivity streak
+
+🎯 /focus → Next important task
+
+✏️ /edit → Edit reminder
+
+🗑️ /delete → Delete reminder
+
+🚀 /motivation → Motivation
+
+⚙️ /settings → Bot settings`
             );
 
             return;
@@ -784,6 +876,11 @@ edit class test next monday 10am`
 
             return;
         }
+        // ===============================
+        // SAVE TO DATABASE
+        // ===============================
+
+
 
         const client = await clientPromise;
 
@@ -797,6 +894,9 @@ edit class test next monday 10am`
             category:
                 parsed.category || "personal",
 
+            priority:
+                parsed.priority || "medium",
+
             originalText: text,
 
             reminderDate: new Date(parsed.date),
@@ -804,9 +904,13 @@ edit class test next monday 10am`
             completed: false,
 
             isOverdue: false,
+
             eventStarted: false,
+
             lastReminderSent: new Date(),
+
             reminderCount: 0,
+
             isRecurring:
                 parsed.isRecurring || false,
 
@@ -820,9 +924,21 @@ edit class test next monday 10am`
             msg.chat.id,
             `✅ Reminder Saved
 
+${getPriorityEmoji(
+                parsed.priority || "medium"
+            )} ${getCategoryEmoji(
+                parsed.category || "personal"
+            )}
+
 📌 ${parsed.title}
 
-⏰ ${parsed.date}`
+⏰ ${parsed.date}
+
+🏷️ Priority: ${parsed.priority || "medium"
+            }
+
+📂 Category: ${parsed.category || "personal"
+            }`
         );
     } catch (error) {
         console.log("BOT ERROR:", error);

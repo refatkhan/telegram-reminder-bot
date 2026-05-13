@@ -4,7 +4,7 @@ import clientPromise from "@/lib/mongodb";
 
 console.log("Cleanup Scheduler Started");
 
-// EVERY DAY AT 3 AM
+// RUN EVERY DAY AT 3 AM
 
 cron.schedule("0 3 * * *", async () => {
     try {
@@ -16,13 +16,29 @@ cron.schedule("0 3 * * *", async () => {
 
         const db = client.db("studyReminder");
 
+        // ==========================
+        // 7 DAYS AGO
+        // ==========================
+
         const sevenDaysAgo = new Date();
 
         sevenDaysAgo.setDate(
             sevenDaysAgo.getDate() - 7
         );
 
-        // DELETE OLD COMPLETED TASKS
+        // ==========================
+        // 30 DAYS AGO
+        // ==========================
+
+        const thirtyDaysAgo = new Date();
+
+        thirtyDaysAgo.setDate(
+            thirtyDaysAgo.getDate() - 30
+        );
+
+        // =====================================
+        // DELETE COMPLETED TASKS AFTER 7 DAYS
+        // =====================================
 
         const completedResult =
             await db.collection("reminders").deleteMany({
@@ -33,14 +49,14 @@ cron.schedule("0 3 * * *", async () => {
                 },
             });
 
-        // DELETE OLD EXPIRED TASKS
+        // =====================================
+        // DELETE ALL OLD TASKS AFTER 30 DAYS
+        // =====================================
 
-        const expiredResult =
+        const oldTasksResult =
             await db.collection("reminders").deleteMany({
-                completed: false,
-
-                reminderDate: {
-                    $lte: sevenDaysAgo,
+                createdAt: {
+                    $lte: thirtyDaysAgo,
                 },
             });
 
@@ -49,7 +65,7 @@ cron.schedule("0 3 * * *", async () => {
         );
 
         console.log(
-            `Deleted Expired Tasks: ${expiredResult.deletedCount}`
+            `Deleted Old Tasks: ${oldTasksResult.deletedCount}`
         );
     } catch (error) {
         console.log(

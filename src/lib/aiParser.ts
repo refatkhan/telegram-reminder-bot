@@ -12,8 +12,9 @@ export async function parseReminderWithAI(
 You are an AI reminder detection system.
 
 Current date and time:
-${new Date().toISOString()}
-
+${new Date().toLocaleString("en-US", {
+        timeZone: "Asia/Dhaka",
+    })}
 Timezone:
 Bangladesh Standard Time (+06:00)
 
@@ -35,6 +36,8 @@ Examples of valid reminders:
 - meeting after 5 min
 - kalke presentation ache
 - remind me to submit assignment
+- gym everyday 7am
+- class every sunday 10am
 
 Examples of NOT reminders:
 - rakib er kache 1400 tk pai
@@ -51,46 +54,48 @@ CRITICAL RULES:
   - after 10 minutes
 - ALWAYS generate REAL ISO datetime.
 - Understand Banglish/Bangla casual language.
+- Return ONLY valid JSON.
+- Never explain anything outside JSON.
 
-Return ONLY valid JSON.
+===================================
+RECURRING REMINDER RULES
+===================================
 
-IF reminder detected:
+Detect recurring reminders.
 
-{
-  "isReminder": true,
-  "title": "Meeting",
-  "date": "2026-05-13T09:01:00+06:00"
-}
-
-IF NOT a reminder:
-
-{
-  "isReminder": false
-}
-  Detect recurring reminders.
+Supported recurring types:
+- daily
+- weekly
 
 Examples:
 
 "gym everyday 7am"
-=
+
 {
   "isReminder": true,
   "title": "Gym",
   "date": "2026-05-14T07:00:00+06:00",
+  "category": "health",
+  "priority": "medium",
   "isRecurring": true,
   "recurringType": "daily"
 }
 
 "class every sunday 10am"
-=
+
 {
   "isReminder": true,
   "title": "Class",
   "date": "2026-05-17T10:00:00+06:00",
+  "category": "study",
+  "priority": "medium",
   "isRecurring": true,
   "recurringType": "weekly"
 }
-Also detect reminder category.
+
+===================================
+CATEGORY RULES
+===================================
 
 Possible categories:
 - study
@@ -115,6 +120,62 @@ Examples:
 "team meeting tomorrow"
 =
 "category": "meeting"
+
+"buy groceries tomorrow"
+=
+"category": "shopping"
+
+===================================
+PRIORITY RULES
+===================================
+
+Possible priorities:
+- low
+- medium
+- high
+
+HIGH PRIORITY keywords:
+- important
+- urgent
+- final exam
+- deadline
+- interview
+
+Examples:
+
+"important dbms exam tomorrow"
+=
+"priority": "high"
+
+"buy groceries tomorrow"
+=
+"priority": "low"
+
+"team meeting tomorrow"
+=
+"priority": "medium"
+
+===================================
+FINAL JSON FORMAT
+===================================
+
+IF reminder detected:
+
+{
+  "isReminder": true,
+  "title": "Meeting",
+  "date": "2026-05-13T09:01:00+06:00",
+  "category": "meeting",
+  "priority": "medium",
+  "isRecurring": false,
+  "recurringType": null
+}
+
+IF NOT a reminder:
+
+{
+  "isReminder": false
+}
 `;
 
     try {
@@ -154,6 +215,8 @@ Examples:
             cleaned
         );
 
+        // EXTRACT JSON
+
         const jsonMatch =
             cleaned.match(/\{[\s\S]*\}/);
 
@@ -167,7 +230,7 @@ Examples:
             jsonMatch[0]
         );
 
-        // NOT A REMINDER
+        // NOT REMINDER
 
         if (!parsed.isReminder) {
             console.log(
@@ -177,7 +240,7 @@ Examples:
             return null;
         }
 
-        // DATE MISSING
+        // NO DATE
 
         if (!parsed.date) {
             console.log("No date found");
@@ -201,19 +264,28 @@ Examples:
             return null;
         }
 
+        // FINAL SAFE RETURN
+
         return {
-            title: parsed.title,
+            title:
+                parsed.title || "Reminder",
 
             date: parsed.date,
 
             category:
-                parsed.category || "personal",
+                parsed.category ||
+                "personal",
+
+            priority:
+                parsed.priority ||
+                "medium",
 
             isRecurring:
                 parsed.isRecurring || false,
 
             recurringType:
-                parsed.recurringType || null,
+                parsed.recurringType ||
+                null,
         };
     } catch (error) {
         console.log(
